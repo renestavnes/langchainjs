@@ -116,15 +116,14 @@ export function _coerceToDict(value: any, defaultKey: string) {
  * transformed.
  */
 export abstract class Runnable<
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    RunInput = any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    RunOutput = any,
-    CallOptions extends RunnableConfig = RunnableConfig
-  >
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  RunInput = any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  RunOutput = any,
+  CallOptions extends RunnableConfig = RunnableConfig
+>
   extends Serializable
-  implements RunnableInterface<RunInput, RunOutput, CallOptions>
-{
+  implements RunnableInterface<RunInput, RunOutput, CallOptions> {
   protected lc_runnable = true;
 
   name?: string;
@@ -206,8 +205,8 @@ export abstract class Runnable<
   withFallbacks(
     fields:
       | {
-          fallbacks: Runnable<RunInput, RunOutput>[];
-        }
+        fallbacks: Runnable<RunInput, RunOutput>[];
+      }
       | Runnable<RunInput, RunOutput>[]
   ): RunnableWithFallbacks<RunInput, RunOutput> {
     const fallbacks = Array.isArray(fields) ? fields : fields.fallbacks;
@@ -374,10 +373,10 @@ export abstract class Runnable<
     func:
       | ((input: T) => Promise<RunOutput>)
       | ((
-          input: T,
-          config?: Partial<CallOptions>,
-          runManager?: CallbackManagerForChainRun
-        ) => Promise<RunOutput>),
+        input: T,
+        config?: Partial<CallOptions>,
+        runManager?: CallbackManagerForChainRun
+      ) => Promise<RunOutput>),
     input: T,
     options?: Partial<CallOptions> & { runType?: string }
   ) {
@@ -1266,10 +1265,10 @@ export class RunnableBinding<
       config,
       ...(this.configFactories
         ? await Promise.all(
-            this.configFactories.map(
-              async (configFactory) => await configFactory(config)
-            )
+          this.configFactories.map(
+            async (configFactory) => await configFactory(config)
           )
+        )
         : [])
     );
   }
@@ -1343,10 +1342,10 @@ export class RunnableBinding<
   ): Promise<(RunOutput | Error)[]> {
     const mergedOptions = Array.isArray(options)
       ? await Promise.all(
-          options.map(async (individualOption) =>
-            this._mergeConfig(ensureConfig(individualOption), this.kwargs)
-          )
+        options.map(async (individualOption) =>
+          this._mergeConfig(ensureConfig(individualOption), this.kwargs)
         )
+      )
       : await this._mergeConfig(ensureConfig(options), this.kwargs);
     return this.bound.batch(inputs, mergedOptions, batchOptions);
   }
@@ -1641,7 +1640,7 @@ export class RunnableRetry<
   protected maxAttemptNumber = 3;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onFailedAttempt: RunnableRetryFailedAttemptHandler = () => {};
+  onFailedAttempt: RunnableRetryFailedAttemptHandler = () => { };
 
   constructor(
     fields: RunnableBindingArgs<RunInput, RunOutput, CallOptions> & {
@@ -1856,7 +1855,12 @@ export class RunnableSequence<
   }
 
   async invoke(input: RunInput, options?: RunnableConfig): Promise<RunOutput> {
+    console.log("Invoke called with input:", input);
+    console.log("Invoke options:", options);
+
     const config = ensureConfig(options);
+    console.log("Config resolved:", config);
+
     const callbackManager_ = await getCallbackManagerForConfig(config);
     const runManager = await callbackManager_?.handleChainStart(
       this.toJSON(),
@@ -1867,13 +1871,21 @@ export class RunnableSequence<
       undefined,
       config?.runName
     );
+
+    console.log("Run manager initialized:", runManager);
+
     delete config.runId;
     let nextStepInput = input;
     let finalOutput: RunOutput;
+
     try {
       const initialSteps = [this.first, ...this.middle];
+      console.log("Steps to process:", initialSteps);
+
       for (let i = 0; i < initialSteps.length; i += 1) {
         const step = initialSteps[i];
+        console.log(`Processing step ${i + 1}:`, step);
+
         const promise = step.invoke(
           nextStepInput,
           patchConfig(config, {
@@ -1882,12 +1894,17 @@ export class RunnableSequence<
             ),
           })
         );
+
+        console.log(`Step ${i + 1} input:`, nextStepInput);
         nextStepInput = await raceWithSignal(promise, options?.signal);
+        console.log(`Step ${i + 1} output:`, nextStepInput);
       }
-      // TypeScript can't detect that the last output of the sequence returns RunOutput, so call it out of the loop here
+
       if (options?.signal?.aborted) {
         throw new Error("Aborted");
       }
+
+      console.log("Processing last step:", this.last);
       finalOutput = await this.last.invoke(
         nextStepInput,
         patchConfig(config, {
@@ -1896,13 +1913,20 @@ export class RunnableSequence<
           ),
         })
       );
+      console.log("Final output:", finalOutput);
     } catch (e) {
+      console.error("Error occurred during invoke:", e);
       await runManager?.handleChainError(e);
       throw e;
     }
+
+    console.log("Handle chain end with output:", finalOutput);
     await runManager?.handleChainEnd(_coerceToDict(finalOutput, "output"));
+
+    console.log("Invoke complete.");
     return finalOutput;
   }
+
 
   async batch(
     inputs: RunInput[],
@@ -2115,9 +2139,9 @@ export class RunnableSequence<
     nameOrFields?:
       | string
       | Omit<
-          RunnableSequenceFields<RunInput, RunOutput>,
-          "first" | "middle" | "last"
-        >
+        RunnableSequenceFields<RunInput, RunOutput>,
+        "first" | "middle" | "last"
+      >
   ) {
     let extra: Record<string, unknown> = {};
     if (typeof nameOrFields === "string") {
@@ -2376,17 +2400,17 @@ function assertNonTraceableFunction<
 >(
   func:
     | RunnableFunc<
+      RunInput,
+      RunOutput | Runnable<RunInput, RunOutput, CallOptions>,
+      CallOptions
+    >
+    | TraceableFunction<
+      RunnableFunc<
         RunInput,
         RunOutput | Runnable<RunInput, RunOutput, CallOptions>,
         CallOptions
       >
-    | TraceableFunction<
-        RunnableFunc<
-          RunInput,
-          RunOutput | Runnable<RunInput, RunOutput, CallOptions>,
-          CallOptions
-        >
-      >
+    >
 ): asserts func is RunnableFunc<
   RunInput,
   RunOutput | Runnable<RunInput, RunOutput, CallOptions>,
@@ -2444,18 +2468,18 @@ export class RunnableLambda<
 
   constructor(fields: {
     func:
-      | RunnableFunc<
-          RunInput,
-          RunOutput | Runnable<RunInput, RunOutput, CallOptions>,
-          CallOptions
-        >
-      | TraceableFunction<
-          RunnableFunc<
-            RunInput,
-            RunOutput | Runnable<RunInput, RunOutput, CallOptions>,
-            CallOptions
-          >
-        >;
+    | RunnableFunc<
+      RunInput,
+      RunOutput | Runnable<RunInput, RunOutput, CallOptions>,
+      CallOptions
+    >
+    | TraceableFunction<
+      RunnableFunc<
+        RunInput,
+        RunOutput | Runnable<RunInput, RunOutput, CallOptions>,
+        CallOptions
+      >
+    >;
   }) {
     if (isTraceableFunction(fields.func)) {
       // eslint-disable-next-line no-constructor-return
@@ -2505,17 +2529,17 @@ export class RunnableLambda<
   >(
     func:
       | RunnableFunc<
+        RunInput,
+        RunOutput | Runnable<RunInput, RunOutput, CallOptions>,
+        CallOptions
+      >
+      | TraceableFunction<
+        RunnableFunc<
           RunInput,
           RunOutput | Runnable<RunInput, RunOutput, CallOptions>,
           CallOptions
         >
-      | TraceableFunction<
-          RunnableFunc<
-            RunInput,
-            RunOutput | Runnable<RunInput, RunOutput, CallOptions>,
-            CallOptions
-          >
-        >
+      >
   ): RunnableLambda<RunInput, RunOutput, CallOptions> {
     return new RunnableLambda({
       func,
@@ -2733,7 +2757,7 @@ export class RunnableLambda<
  * // { years_to_fifty: 25, years_to_hundred: 75 }
  * ```
  */
-export class RunnableParallel<RunInput> extends RunnableMap<RunInput> {}
+export class RunnableParallel<RunInput> extends RunnableMap<RunInput> { }
 
 /**
  * A Runnable that can fallback to other Runnables if it fails.
@@ -3089,15 +3113,14 @@ export interface RunnableAssignFields<RunInput> {
  * ```
  */
 export class RunnableAssign<
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    RunInput extends Record<string, any> = Record<string, any>,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    RunOutput extends Record<string, any> = Record<string, any>,
-    CallOptions extends RunnableConfig = RunnableConfig
-  >
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  RunInput extends Record<string, any> = Record<string, any>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  RunOutput extends Record<string, any> = Record<string, any>,
+  CallOptions extends RunnableConfig = RunnableConfig
+>
   extends Runnable<RunInput, RunOutput>
-  implements RunnableAssignFields<RunInput>
-{
+  implements RunnableAssignFields<RunInput> {
   static lc_name() {
     return "RunnableAssign";
   }
@@ -3224,15 +3247,14 @@ export interface RunnablePickFields {
  * ```
  */
 export class RunnablePick<
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    RunInput extends Record<string, any> = Record<string, any>,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    RunOutput extends Record<string, any> | any = Record<string, any> | any,
-    CallOptions extends RunnableConfig = RunnableConfig
-  >
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  RunInput extends Record<string, any> = Record<string, any>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  RunOutput extends Record<string, any> | any = Record<string, any> | any,
+  CallOptions extends RunnableConfig = RunnableConfig
+>
   extends Runnable<RunInput, RunOutput>
-  implements RunnablePickFields
-{
+  implements RunnablePickFields {
   static lc_name() {
     return "RunnablePick";
   }
