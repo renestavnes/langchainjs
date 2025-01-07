@@ -48,3 +48,6 @@ docs/api_refs/typedoc.json
 credentials.json
 **/typedoc.json
 .vercel
+
+package.tgx
+build.pack.sh

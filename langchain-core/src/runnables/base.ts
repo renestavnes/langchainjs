@@ -1855,11 +1855,11 @@ export class RunnableSequence<
   }
 
   async invoke(input: RunInput, options?: RunnableConfig): Promise<RunOutput> {
-    console.log("Invoke called with input:", input);
-    console.log("Invoke options:", options);
+    // console.log("Invoke called with input:", input);
+    // console.log("Invoke options:", options);
 
     const config = ensureConfig(options);
-    console.log("Config resolved:", config);
+    // console.log("Config resolved:", config);
 
     const callbackManager_ = await getCallbackManagerForConfig(config);
     const runManager = await callbackManager_?.handleChainStart(
@@ -1872,7 +1872,7 @@ export class RunnableSequence<
       config?.runName
     );
 
-    console.log("Run manager initialized:", runManager);
+    // console.log("Run manager initialized:", runManager);
 
     delete config.runId;
     let nextStepInput = input;
@@ -1880,11 +1880,11 @@ export class RunnableSequence<
 
     try {
       const initialSteps = [this.first, ...this.middle];
-      console.log("Steps to process:", initialSteps);
+      console.log("Steps to process:", initialSteps.length);
 
       for (let i = 0; i < initialSteps.length; i += 1) {
         const step = initialSteps[i];
-        console.log(`Processing step ${i + 1}:`, step);
+        // console.log(`Processing step ${i + 1}:`, step);
 
         const promise = step.invoke(
           nextStepInput,
@@ -1897,14 +1897,14 @@ export class RunnableSequence<
 
         console.log(`Step ${i + 1} input:`, nextStepInput);
         nextStepInput = await raceWithSignal(promise, options?.signal);
-        console.log(`Step ${i + 1} output:`, nextStepInput);
+        // console.log(`Step ${i + 1} output:`, nextStepInput);
       }
 
       if (options?.signal?.aborted) {
         throw new Error("Aborted");
       }
 
-      console.log("Processing last step:", this.last);
+      // console.log("Processing last step:", this.last);
       finalOutput = await this.last.invoke(
         nextStepInput,
         patchConfig(config, {
@@ -1920,7 +1920,7 @@ export class RunnableSequence<
       throw e;
     }
 
-    console.log("Handle chain end with output:", finalOutput);
+    // console.log("Handle chain end with output:", finalOutput);
     await runManager?.handleChainEnd(_coerceToDict(finalOutput, "output"));
 
     console.log("Invoke complete.");

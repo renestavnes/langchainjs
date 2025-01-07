@@ -1240,33 +1240,33 @@ class RunnableSequence extends Runnable {
         return [this.first, ...this.middle, this.last];
     }
     async invoke(input, options) {
-        console.log("Invoke called with input:", input);
-        console.log("Invoke options:", options);
+        // console.log("Invoke called with input:", input);
+        // console.log("Invoke options:", options);
         const config = (0, config_js_1.ensureConfig)(options);
-        console.log("Config resolved:", config);
+        // console.log("Config resolved:", config);
         const callbackManager_ = await (0, config_js_1.getCallbackManagerForConfig)(config);
         const runManager = await callbackManager_?.handleChainStart(this.toJSON(), _coerceToDict(input, "input"), config.runId, undefined, undefined, undefined, config?.runName);
-        console.log("Run manager initialized:", runManager);
+        // console.log("Run manager initialized:", runManager);
         delete config.runId;
         let nextStepInput = input;
         let finalOutput;
         try {
             const initialSteps = [this.first, ...this.middle];
-            console.log("Steps to process:", initialSteps);
+            console.log("Steps to process:", initialSteps.length);
             for (let i = 0; i < initialSteps.length; i += 1) {
                 const step = initialSteps[i];
-                console.log(`Processing step ${i + 1}:`, step);
+                // console.log(`Processing step ${i + 1}:`, step);
                 const promise = step.invoke(nextStepInput, (0, config_js_1.patchConfig)(config, {
                     callbacks: runManager?.getChild(this.omitSequenceTags ? undefined : `seq:step:${i + 1}`),
                 }));
                 console.log(`Step ${i + 1} input:`, nextStepInput);
                 nextStepInput = await (0, signal_js_1.raceWithSignal)(promise, options?.signal);
-                console.log(`Step ${i + 1} output:`, nextStepInput);
+                // console.log(`Step ${i + 1} output:`, nextStepInput);
             }
             if (options?.signal?.aborted) {
                 throw new Error("Aborted");
             }
-            console.log("Processing last step:", this.last);
+            // console.log("Processing last step:", this.last);
             finalOutput = await this.last.invoke(nextStepInput, (0, config_js_1.patchConfig)(config, {
                 callbacks: runManager?.getChild(this.omitSequenceTags ? undefined : `seq:step:${this.steps.length}`),
             }));
@@ -1277,7 +1277,7 @@ class RunnableSequence extends Runnable {
             await runManager?.handleChainError(e);
             throw e;
         }
-        console.log("Handle chain end with output:", finalOutput);
+        // console.log("Handle chain end with output:", finalOutput);
         await runManager?.handleChainEnd(_coerceToDict(finalOutput, "output"));
         console.log("Invoke complete.");
         return finalOutput;
